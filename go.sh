@@ -2,11 +2,6 @@
 set -euf
 set -o pipefail
 
-CA="./ca.sh"
-CLIENT="./client.sh"
-CA_BASE_PATH="dummy-ca"
-CLIENT_BASE_PATH="dummy-client"
-
 CA_DIR="ca"
 CA_SERIAL_FILE="$CA_DIR/dummy-ca.srl"
 CA_KEY_FILE="$CA_DIR/dummy-ca.key"
@@ -18,12 +13,17 @@ CLIENT_KEY_FILE="$CLIENT_DIR/dummy-client.key"
 CLIENT_CSR_FILE="$CLIENT_DIR/dummy-client.csr"
 CLIENT_CERT_FILE="$CLIENT_DIR/dummy-client.cert"
 CLIENT_CERT_SUBJ="/C=FI/ST=Helsinki/L=Dummy/O=Dummy/OU=IT/CN=Dummy Client"
+CLIENT_P12_FILE="$CLIENT_DIR/dummy-client.p12"
+CLIENT_P12_PASSWD="secret"
 
 SERVER_DIR="server"
 SERVER_KEY_FILE="$SERVER_DIR/dummy-server.key"
 SERVER_CSR_FILE="$SERVER_DIR/dummy-server.csr"
 SERVER_CERT_FILE="$SERVER_DIR/dummy-server.cert"
 SERVER_CERT_SUBJ="/C=FI/ST=Helsinki/L=Dummy/O=Dummy/OU=IT/CN=example.org"
+
+NGINX_DIR="nginx"
+NGINX_PACKAGE="nginx.tar"
 
 OPENSSL=/usr/bin/openssl
 
@@ -57,8 +57,14 @@ ca_init() {
 # $1: CSR filename
 ca_sign() { $OPENSSL x509 -req -days 3650 -in "$1" -CAkey "$CA_KEY_FILE" -CA "$CA_CERT_FILE" -CAserial "$CA_SERIAL_FILE" -CAcreateserial; }
 
+# Export key and cert to PKCS#12 format
+# $1: key filename
+# $2: cert filename
+# $3: password
+pkcs12() { $OPENSSL pkcs12 -export -inkey "$1" -in "$2" -passout "pass:$3"; }
+
 clean() {
-  rm -rf "$CA_DIR" "$CLIENT_DIR" "$SERVER_DIR"
+  rm -rf "$CA_DIR" "$CLIENT_DIR" "$SERVER_DIR" "$NGINX_DIR/ssl" "$NGINX_PACKAGE"
 }
 
 init() {
@@ -74,6 +80,7 @@ init() {
   test -f "$CLIENT_KEY_FILE"      ||(key 4096 > "$CLIENT_KEY_FILE")
   test -f "$CLIENT_CSR_FILE"      ||(csr "$CLIENT_KEY_FILE" "$CLIENT_CERT_SUBJ" > "$CLIENT_CSR_FILE")
   test -f "$CLIENT_CERT_FILE"     ||(ca_sign "$CLIENT_CSR_FILE" > "$CLIENT_CERT_FILE")
+  test -f "$CLIENT_P12_FILE"      ||(pkcs12 "$CLIENT_KEY_FILE" "$CLIENT_CERT_FILE" "$CLIENT_P12_PASSWD" > "$CLIENT_P12_FILE")
 
   # Create a Server Certificate signed by the dummy CA
   test -f "$SERVER_KEY_FILE"      ||(key 4096 > "$SERVER_KEY_FILE")
@@ -89,19 +96,32 @@ status() {
   test ! -f "$CLIENT_KEY_FILE"    ||echo "Dummy client key             $CLIENT_KEY_FILE"
   test ! -f "$CLIENT_CSR_FILE"    ||echo "Dummy client CSR             $CLIENT_CSR_FILE"
   test ! -f "$CLIENT_CERT_FILE"   ||echo "Dummy client certificate     $CLIENT_CERT_FILE"
+  test ! -f "$CLIENT_P12_FILE"    ||echo "Dummy client PKCS#12 file    $CLIENT_P12_FILE"
 
   test ! -f "$SERVER_KEY_FILE"    ||echo "Dummy server key             $SERVER_KEY_FILE"
   test ! -f "$SERVER_CSR_FILE"    ||echo "Dummy server csr             $SERVER_CSR_FILE"
   test ! -f "$SERVER_CERT_FILE"   ||echo "Dummy server certificate     $SERVER_CERT_FILE"
+
+  test ! -f "$NGINX_PACKAGE"      ||echo "Nginx configuration package  $NGINX_PACKAGE"
+}
+
+package() {
+  init
+  mkdir -p "$NGINX_DIR/ssl"
+  cp "$SERVER_KEY_FILE"  "$NGINX_DIR/ssl"
+  cp "$SERVER_CERT_FILE" "$NGINX_DIR/ssl"
+  cp "$CA_CERT_FILE"     "$NGINX_DIR/ssl"
+  tar cf "$NGINX_PACKAGE" "$NGINX_DIR"
 }
 
 case "${1:-init}" in
-  clean)     clean            ;;
-  init)      init && status   ;;
-  status)    status           ;;
+  clean)     clean             ;;
+  init)      init && status    ;;
+  package)   package && status ;;
+  status)    status            ;;
 
   *)
-    echo "Usage: $0 {clean|init|status}" >&2
+    echo "Usage: $0 {clean|init|package|status}" >&2
     exit 2
     ;;
 esac
