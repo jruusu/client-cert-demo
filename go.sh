@@ -2,8 +2,8 @@
 set -euf
 set -o pipefail
 
-CA="./ca"
-CLIENT="./client"
+CA="./ca.sh"
+CLIENT="./client.sh"
 CA_BASE_PATH="dummy-ca"
 CLIENT_BASE_PATH="dummy-client"
 
