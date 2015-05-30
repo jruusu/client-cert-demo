@@ -1,6 +1,7 @@
 *.key
 *.csr
 *.cert
+*.p12
 *.srl
 *.crl
 *.tar
