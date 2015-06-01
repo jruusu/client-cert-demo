@@ -9,9 +9,9 @@ Generate a dummy CA, client key+cert and server key+cert from scratch: clone thi
 
 ## Set up your browser for certificate based authentication
 
-Import the dummy client certificate (client/dummy-client.p12) to your browser. The password is `secret`. Don't tell anyone.
+Import the dummy client certificate `client/dummy-client.p12` to your browser. The password is `secret`. Don't tell anyone.
 
-Eg. in Chrome: Settings > Advanced > HTTPS/SSL >Manage certificates > Import.
+Eg. in Chrome: Settings > Advanced > HTTPS/SSL > Manage certificates > Import.
 
 
 ## Set up an nginx reverse proxy to handle client certificate authentication
@@ -46,8 +46,11 @@ Fetch https://your.host/echo and inspect the result. If there was much success, 
 CRL
 
 # Acknowledgements
-This stuff is inspired by mostly based on [an article by Nate Good](http://nategood.com/client-side-certificate-authentication-in-ngi).
+This stuff is inspired by and mostly based on [an article by Nate Good](http://nategood.com/client-side-certificate-authentication-in-ngi).
 
 We're using Brian Cantoni's [Echo Service](http://www.cantoni.org/2012/01/08/simple-webservice-echo-test) to check our headers.
 
 Much appreciated. Thanks!
+
+# Further reading
+* On running your own Certificate Authority: https://jamielinux.com/blog/category/CA/
